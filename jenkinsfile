@@ -1,0 +1,67 @@
+pipeline
+{
+    agent any
+    stages
+    {
+        stage('ContinuousDownload')
+        {
+            steps
+            {
+                script
+                {
+                    try
+                    {
+                       git 'https://github.com/intelliqittrainings/maven.git' 
+                    }
+                    catch(Exception e1)
+                    {
+                     mail bcc: '', body: 'Jenkins is unable to download', cc: '', from: '', replyTo: '', subject: 'download failed', to: 'rufusayam@gmail.com' 
+                     exit(1)
+                    }
+                }
+                
+            }
+        }
+        stage('ContinuousBuild')
+        {
+            steps
+            {
+                script
+                {
+                    try
+                    {
+                     sh 'mvn package'   
+                    }
+                    catch(Exception e2)
+                    {
+                      mail bcc: '', body: 'Jenkins is unable to create an artifacts from the downloaded code', cc: '', from: '', replyTo: '', subject: 'build failed', to: 'dev@gmail.com'  
+                    }
+                }
+                
+            }
+        }
+        stage('ContinuousDeployment')
+        {
+            steps
+            {
+                deploy adapters: [tomcat9(credentialsId: 'e9c1796d-f721-4a0e-917b-20f16f216c85', path: '', url: 'http://172.31.81.214:8080')], contextPath: 'testapp', war: '**/*.war'
+            }
+        }
+        stage('ContinuousTesting')
+        {
+            steps
+            {
+                input 'waiting for delivery manager\'s approval'
+                git 'https://github.com/intelliqittrainings/FunctionalTesting.git'
+                sh 'java -jar /home/ubuntu/.jenkins/workspace/DeclarativePipeline02/testing.jar'
+            }
+        }
+        stage('ContinuousDelivery')
+        {
+            steps
+            {
+                deploy adapters: [tomcat9(credentialsId: 'e9c1796d-f721-4a0e-917b-20f16f216c85', path: '', url: 'http://172.31.23.22:8080')], contextPath: 'prodapp', war: '**/*.war'
+            }
+        }
+    }
+}
